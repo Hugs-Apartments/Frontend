@@ -206,20 +206,20 @@ export const TESTIMONIALS = [
 
 export const WHY_HUGS = [
   {
-    title: 'Round-the-clock Security',
-    body: 'Manned entrances and 24/7 surveillance so you can relax completely, day or night.',
+    title: '24/7 Security',
+    body: 'Manned entrances, round-the-clock watch.',
   },
   {
     title: 'Comfort, Considered',
-    body: 'Warm interiors, premium bedding and soft-glow lighting in every apartment.',
+    body: 'Warm interiors, premium bedding, soft light.',
   },
   {
-    title: 'Everything Just Works',
-    body: 'Backup power, high-speed WiFi and clean water supply — no interruptions, ever.',
+    title: 'Everything Works',
+    body: 'Backup power, fast WiFi, clean water — always.',
   },
   {
     title: 'Heart of Maryland',
-    body: 'Minutes from the best of Maryland, Lagos — dining, business and the city beyond.',
+    body: 'Minutes from Lagos dining and business.',
   },
 ]
 
@@ -231,6 +231,10 @@ export const WHY_HUGS = [
 // ---------------------------------------------------------------------------
 
 const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms))
+
+// When VITE_API_URL is set the service layer talks to the real backend;
+// otherwise it returns mock data. No Supabase keys ever live in the frontend.
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export async function getListings() {
   await delay()
@@ -257,13 +261,42 @@ export function getLocations() {
   return [...set].sort()
 }
 
-// Newsletter subscribe — mock. Wire to the backend /api/subscribe later.
+// Newsletter subscribe. Posts to the backend /api/subscribe when configured
+// (the backend stores the address and sends a welcome email); mocks otherwise.
 export async function subscribeNewsletter(email) {
-  await delay(500)
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     throw new Error('Please enter a valid email address.')
   }
+  if (API_URL) {
+    const res = await fetch(`${API_URL}/api/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Subscription failed. Please try again.')
+    return { ok: true, email, message: data.message }
+  }
+  await delay(500)
   return { ok: true, email }
+}
+
+// Contact form. Posts to the backend /api/contact when configured — the backend
+// emails the company AND sends the sender an acknowledgement. Mocks otherwise
+// so the form still works standalone.
+export async function submitContact({ name, email, phone, message }) {
+  if (API_URL) {
+    const res = await fetch(`${API_URL}/api/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone, message }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not send your message. Please try again.')
+    return { ok: true, message: data.message }
+  }
+  await delay(500)
+  return { ok: true }
 }
 
 // True when [checkIn, checkOut) does NOT overlap any of the apartment's booked

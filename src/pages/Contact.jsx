@@ -1,21 +1,32 @@
 import { useState } from 'react'
 import { MapPin, Phone, Mail, MessageCircle, Clock, Check } from 'lucide-react'
 import { SectionHeading, Button } from '../components/ui.jsx'
+import { submitContact } from '../data/mockListings.js'
 
 const WHATSAPP = '+234 800 000 0000'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
 
   const valid = form.name && /^\S+@\S+\.\S+$/.test(form.email) && form.message.length > 5
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    if (!valid) return
-    // Mock submit — no backend yet.
-    setSent(true)
-    setForm({ name: '', email: '', message: '' })
+    if (!valid || sending) return
+    setSending(true)
+    setError('')
+    try {
+      await submitContact(form)
+      setSent(true)
+      setForm({ name: '', email: '', message: '' })
+    } catch (err) {
+      setError(err.message || 'Could not send your message. Please try again.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -64,6 +75,9 @@ export default function Contact() {
               <form onSubmit={submit}>
                 <h2 className="font-serif text-2xl font-semibold text-ink">Send a message</h2>
                 <span className="gold-rule mt-3 block !w-14" />
+                {error && (
+                  <div className="mt-5 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
+                )}
                 <div className="mt-6 space-y-4">
                   <label className="block">
                     <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/50">Name</span>
@@ -92,8 +106,8 @@ export default function Contact() {
                     />
                   </label>
                 </div>
-                <Button as="button" type="submit" disabled={!valid} size="lg" className="mt-6 w-full">
-                  Send message
+                <Button as="button" type="submit" disabled={!valid || sending} size="lg" className="mt-6 w-full">
+                  {sending ? 'Sending…' : 'Send message'}
                 </Button>
               </form>
             )}

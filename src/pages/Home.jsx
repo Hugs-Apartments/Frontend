@@ -83,10 +83,10 @@ export default function Home() {
                   <span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/40 text-gold sm:h-12 sm:w-12">
                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.5} />
                   </span>
-                  <h3 className="mt-4 font-serif text-lg font-semibold text-white sm:mt-5 sm:text-xl">
+                  <h3 className="mt-4 font-serif text-base font-semibold text-white sm:mt-5 sm:text-lg">
                     {item.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/70">{item.body}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-white/70 sm:mt-2 sm:text-sm">{item.body}</p>
                 </div>
               )
             })}
@@ -125,7 +125,7 @@ function Testimonials({ testimonials }) {
         eyebrow="Guest Stories"
         title="Loved by our guests"
       />
-      <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+      <div className="mt-12 grid gap-5 sm:gap-6 lg:grid-cols-2">
         {testimonials.map((t) => (
           <TestimonialCard key={t.id} testimonial={t} />
         ))}
