@@ -3,9 +3,9 @@ import { Star, Quote } from 'lucide-react'
 export default function TestimonialCard({ testimonial }) {
   const { name, location, rating, text } = testimonial
   return (
-    <figure className="flex h-full flex-col rounded-2xl border-t-2 border-gold bg-white p-7 shadow-sm">
-      <Quote className="h-8 w-8 text-gold/40" aria-hidden="true" />
-      <blockquote className="mt-4 flex-1 text-ink/80">
+    <figure className="flex h-full flex-col rounded-2xl border-t-2 border-gold bg-white p-5 shadow-sm sm:p-7">
+      <Quote className="h-7 w-7 text-gold/40 sm:h-8 sm:w-8" aria-hidden="true" />
+      <blockquote className="mt-4 flex-1 text-sm text-ink/80 sm:text-base">
         <p className="leading-relaxed">“{text}”</p>
       </blockquote>
       <div className="mt-6 flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>

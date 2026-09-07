@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Calendar, Users, Search, Minus, Plus } from 'lucide-react'
+import { MapPin, Calendar, Users, Search, Minus, Plus, CheckCircle2, CalendarX } from 'lucide-react'
 import { Button } from './ui.jsx'
-import { todayISO, addDaysISO, nightsBetween, formatNaira } from '../utils/format.js'
+import { getLocations, isAvailableForRange, conflictingRanges } from '../data/mockListings.js'
+import { todayISO, addDaysISO, nightsBetween, formatNaira, formatDateLong } from '../utils/format.js'
 
 // Guest stepper.
 function GuestStepper({ value, onChange, max = 8 }) {
@@ -36,9 +37,11 @@ const fieldWrap =
 const label = 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/50'
 const input = 'bg-transparent text-sm font-medium text-ink outline-none'
 
-// Hero search widget — location fixed to Maryland, Lagos.
+// Hero search widget — location is a dropdown built from the catalogue.
 export function SearchWidget() {
   const navigate = useNavigate()
+  const locations = getLocations()
+  const [location, setLocation] = useState('')
   const [checkIn, setCheckIn] = useState(todayISO())
   const [checkOut, setCheckOut] = useState(addDaysISO(todayISO(), 2))
   const [guests, setGuests] = useState(2)
@@ -46,6 +49,7 @@ export function SearchWidget() {
   const submit = (e) => {
     e.preventDefault()
     const params = new URLSearchParams({ checkIn, checkOut, guests: String(guests) })
+    if (location) params.set('location', location)
     navigate(`/listings?${params.toString()}`)
   }
 
@@ -54,10 +58,19 @@ export function SearchWidget() {
       onSubmit={submit}
       className="grid w-full gap-3 rounded-2xl bg-white/95 p-4 shadow-2xl shadow-plum/30 backdrop-blur sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr_auto] lg:items-end"
     >
-      <div className={fieldWrap}>
+      <label className={fieldWrap}>
         <span className={label}><MapPin className="h-3.5 w-3.5 text-gold" /> Location</span>
-        <span className={input}>Maryland, Lagos</span>
-      </div>
+        <select
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className={`${input} cursor-pointer`}
+        >
+          <option value="">All locations</option>
+          {locations.map((loc) => (
+            <option key={loc} value={loc}>{loc}, Maryland</option>
+          ))}
+        </select>
+      </label>
       <label className={fieldWrap}>
         <span className={label}><Calendar className="h-3.5 w-3.5 text-gold" /> Check-in</span>
         <input
@@ -100,7 +113,14 @@ export function BookingPanel({ listing }) {
   const subtotal = nights * listing.pricePerNight
   const serviceFee = Math.round(subtotal * 0.05)
   const total = subtotal + serviceFee
-  const valid = nights > 0 && guests <= listing.maxGuests
+
+  // Availability is judged against this apartment's own booked ranges for the
+  // exact dates chosen — other dates stay bookable.
+  const availableForDates = isAvailableForRange(listing, checkIn, checkOut)
+  const conflicts = conflictingRanges(listing, checkIn, checkOut)
+  const datesChosen = nights > 0
+  const withinGuests = guests <= listing.maxGuests
+  const valid = datesChosen && withinGuests && availableForDates
 
   const proceed = () => {
     const params = new URLSearchParams({
@@ -150,7 +170,29 @@ export function BookingPanel({ listing }) {
         <GuestStepper value={guests} onChange={setGuests} max={listing.maxGuests} />
       </div>
 
-      {nights > 0 && (
+      {/* Per-date availability for THIS apartment */}
+      {datesChosen && (
+        availableForDates ? (
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-available/10 px-3 py-2.5 text-sm font-medium text-available">
+            <CheckCircle2 className="h-4 w-4 shrink-0" /> Available for your dates
+          </div>
+        ) : (
+          <div className="mt-4 rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">
+            <span className="flex items-center gap-2 font-medium">
+              <CalendarX className="h-4 w-4 shrink-0" /> Not available for these dates
+            </span>
+            <p className="mt-1.5 text-xs text-red-500">
+              Already booked{' '}
+              {conflicts
+                .map((r) => `${formatDateLong(r.from)} – ${formatDateLong(r.to)}`)
+                .join(', ')}
+              . Try different dates.
+            </p>
+          </div>
+        )
+      )}
+
+      {datesChosen && availableForDates && (
         <dl className="mt-5 space-y-2 border-t border-ink/10 pt-5 text-sm">
           <div className="flex justify-between text-ink/70">
             <dt>{formatNaira(listing.pricePerNight)} × {nights} night{nights > 1 ? 's' : ''}</dt>
@@ -174,9 +216,9 @@ export function BookingPanel({ listing }) {
         size="lg"
         className="mt-5 w-full"
       >
-        Book Now
+        {datesChosen && !availableForDates ? 'Not available' : 'Book Now'}
       </Button>
-      {!valid && nights === 0 && (
+      {!datesChosen && (
         <p className="mt-3 text-center text-xs text-ink/50">Select valid dates to continue.</p>
       )}
       {guests > listing.maxGuests && (

@@ -9,8 +9,10 @@ import {
   getListings,
   getListingTypes,
   getCoreAmenities,
+  getLocations,
+  isAvailableForRange,
 } from '../data/mockListings.js'
-import { formatNaira } from '../utils/format.js'
+import { formatNaira, formatDateLong } from '../utils/format.js'
 
 const SORTS = [
   { value: 'featured', label: 'Featured' },
@@ -30,11 +32,13 @@ export default function Listings() {
 
   const types = getListingTypes()
   const coreAmenities = getCoreAmenities()
+  const locations = getLocations()
 
   const [selectedTypes, setSelectedTypes] = useState([])
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
   const [minGuests, setMinGuests] = useState(1)
   const [selectedAmenities, setSelectedAmenities] = useState([])
+  const [location, setLocation] = useState('')
   const [sort, setSort] = useState('featured')
 
   useEffect(() => {
@@ -45,19 +49,29 @@ export default function Listings() {
   }, [])
 
   const guestsFromSearch = Number(searchParams.get('guests')) || null
+  const locationFromSearch = searchParams.get('location') || ''
+  const checkIn = searchParams.get('checkIn') || ''
+  const checkOut = searchParams.get('checkOut') || ''
+  const hasDates = Boolean(checkIn && checkOut)
 
   useEffect(() => {
     if (guestsFromSearch) setMinGuests(guestsFromSearch)
   }, [guestsFromSearch])
+
+  useEffect(() => {
+    setLocation(locationFromSearch)
+  }, [locationFromSearch])
 
   const toggle = (list, setList, value) =>
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
 
   const filtered = useMemo(() => {
     let out = listings.filter((l) => {
+      if (location && l.area !== location) return false
       if (selectedTypes.length && !selectedTypes.includes(l.type)) return false
       if (l.pricePerNight > maxPrice) return false
       if (l.maxGuests < minGuests) return false
+      if (hasDates && !isAvailableForRange(l, checkIn, checkOut)) return false
       if (selectedAmenities.length && !selectedAmenities.every((a) => l.amenities.includes(a)))
         return false
       return true
@@ -67,18 +81,20 @@ export default function Listings() {
     else if (sort === 'price-desc') out.sort((a, b) => b.pricePerNight - a.pricePerNight)
     else if (sort === 'rating') out.sort((a, b) => b.rating - a.rating)
     return out
-  }, [listings, selectedTypes, maxPrice, minGuests, selectedAmenities, sort])
+  }, [listings, location, selectedTypes, maxPrice, minGuests, selectedAmenities, sort, hasDates, checkIn, checkOut])
 
   const clearAll = () => {
     setSelectedTypes([])
     setMaxPrice(PRICE_MAX)
     setMinGuests(1)
     setSelectedAmenities([])
+    setLocation('')
   }
 
   const activeCount =
     selectedTypes.length +
     selectedAmenities.length +
+    (location ? 1 : 0) +
     (maxPrice < PRICE_MAX ? 1 : 0) +
     (minGuests > 1 ? 1 : 0)
 
@@ -92,6 +108,21 @@ export default function Listings() {
           </button>
         )}
       </div>
+
+      {/* Location */}
+      <fieldset>
+        <legend className="text-sm font-semibold text-ink">Location</legend>
+        <select
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="mt-3 w-full rounded-lg border border-ink/20 bg-white px-3 py-2.5 text-sm text-ink/70 outline-none focus:border-gold"
+        >
+          <option value="">All locations</option>
+          {locations.map((loc) => (
+            <option key={loc} value={loc}>{loc}, Maryland</option>
+          ))}
+        </select>
+      </fieldset>
 
       {/* Type */}
       <fieldset>
@@ -193,6 +224,10 @@ export default function Listings() {
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <p className="text-sm text-ink/60">
               {loading ? 'Loading…' : `${filtered.length} apartment${filtered.length !== 1 ? 's' : ''}`}
+              {!loading && hasDates && (
+                <span className="text-ink/45"> · {formatDateLong(checkIn)} → {formatDateLong(checkOut)}</span>
+              )}
+              {!loading && location && <span className="text-ink/45"> · {location}, Maryland</span>}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -237,9 +272,9 @@ export default function Listings() {
 
           {/* Results */}
           {loading ? (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-80 animate-pulse rounded-xl bg-ink/5" />
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-52 animate-pulse rounded-xl bg-ink/5" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -251,7 +286,7 @@ export default function Listings() {
               </Button>
             </div>
           ) : view === 'grid' ? (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((l) => (
                 <ListingCard key={l.id} listing={l} />
               ))}

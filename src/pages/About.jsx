@@ -37,7 +37,7 @@ export default function About() {
       {/* Story blurb */}
       <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl border-t-2 border-gold shadow-lg">
+          <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border-t-2 border-gold shadow-lg lg:max-w-md">
             <img src="https://picsum.photos/seed/hugsinterior/900/700" alt="Apartment interior — placeholder" className="aspect-[4/3] w-full object-cover" />
           </div>
           <div>
@@ -75,10 +75,10 @@ export default function About() {
       <section className="bg-plum py-20 text-white">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <SectionHeading eyebrow="What We Stand For" title="The Hugs Promise" dark />
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
             {why.map((item) => (
-              <div key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-7">
-                <h3 className="font-serif text-xl font-semibold text-white">{item.title}</h3>
+              <div key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-7">
+                <h3 className="font-serif text-lg font-semibold text-white sm:text-xl">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/70">{item.body}</p>
               </div>
             ))}

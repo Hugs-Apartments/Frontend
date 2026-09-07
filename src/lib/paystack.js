@@ -1,23 +1,52 @@
-// Paystack integration — STUB for now.
+// Paystack integration.
 //
-// The checkout flow currently simulates payment in the UI only (no charge is
-// made). When the backend is ready, install the inline script or SDK and
-// replace initPayment below with a real Paystack call.
+// Real payments are NEVER charged from card details typed into our own form —
+// the guest is redirected to Paystack's secure checkout. The flow is:
 //
-//   Popup approach (client-side):
-//   <script src="https://js.paystack.co/v1/inline.js"></script>
-//   then window.PaystackPop.setup({ key, email, amount, ref, callback })
+//   1. Backend POST /api/payments/initialize  → { authorization_url, reference }
+//   2. Browser redirects to authorization_url (Paystack-hosted checkout)
+//   3. Paystack redirects back to our callback, backend verifies the reference
+//   4. On success the backend emails the guest a confirmation + PDF receipt
 //
-//   Or initialize server-side and redirect to the returned authorization_url.
+// Until VITE_API_URL is wired up we run in MOCK mode: no redirect, no charge —
+// initPayment just resolves with a simulated success so the UI is clickable.
 
 import { makeBookingRef } from '../utils/format.js'
 
-// Simulates a payment. Resolves with a mock success result after a short delay.
-export async function initPayment({ amount, email, bookingRef }) {
+const API_URL = import.meta.env.VITE_API_URL ?? ''
+export const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? ''
+
+// Real Paystack runs only when we have both a backend to initialize against and
+// a public key. Otherwise we simulate.
+export const PAYSTACK_ENABLED = Boolean(API_URL && PAYSTACK_PUBLIC_KEY)
+
+// Kicks off payment.
+//   Real mode  → { redirect: true, authorizationUrl, reference }
+//                (caller should send the browser to authorizationUrl)
+//   Mock mode  → { status: 'success', reference, simulated: true, ... }
+export async function initPayment({ amount, email, bookingRef, metadata }) {
+  const reference = bookingRef ?? makeBookingRef()
+
+  if (PAYSTACK_ENABLED) {
+    const res = await fetch(`${API_URL}/api/payments/initialize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, email, reference, metadata }),
+    })
+    if (!res.ok) throw new Error('Could not start payment. Please try again.')
+    const data = await res.json()
+    return {
+      redirect: true,
+      authorizationUrl: data.authorization_url ?? data.authorizationUrl,
+      reference: data.reference ?? reference,
+    }
+  }
+
+  // Mock: pretend the redirect happened and Paystack returned success.
   await new Promise((r) => setTimeout(r, 1400))
   return {
     status: 'success',
-    reference: bookingRef ?? makeBookingRef(),
+    reference,
     amount,
     email,
     paidAt: new Date().toISOString(),
@@ -25,6 +54,3 @@ export async function initPayment({ amount, email, bookingRef }) {
     simulated: true,
   }
 }
-
-export const PAYSTACK_ENABLED = false
-export const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? ''

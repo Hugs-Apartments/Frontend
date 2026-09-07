@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { Check, CreditCard, Lock, CalendarCheck, User, ArrowRight, ArrowLeft, Loader2, PartyPopper } from 'lucide-react'
+import { Check, ShieldCheck, Lock, CalendarCheck, User, ArrowRight, ArrowLeft, Loader2, PartyPopper, FileText, Mail } from 'lucide-react'
 import { Button } from '../components/ui.jsx'
 import { getListingById } from '../data/mockListings.js'
 import { initPayment } from '../lib/paystack.js'
@@ -24,6 +24,7 @@ export default function Booking() {
 
   const [step, setStep] = useState(0)
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState('')
   const [confirmation, setConfirmation] = useState(null)
   const [guest, setGuest] = useState({ firstName: '', lastName: '', email: '', phone: '', notes: '' })
 
@@ -55,11 +56,35 @@ export default function Booking() {
     guest.firstName && guest.lastName && /^\S+@\S+\.\S+$/.test(guest.email) && guest.phone.length >= 7
 
   const pay = async () => {
+    setError('')
     setProcessing(true)
     const ref = makeBookingRef()
-    const result = await initPayment({ amount: totals.total, email: guest.email, bookingRef: ref })
-    setProcessing(false)
-    setConfirmation({ ...result, ref })
+    try {
+      const result = await initPayment({
+        amount: totals.total,
+        email: guest.email,
+        bookingRef: ref,
+        metadata: {
+          listingId: listing.id,
+          listingName: listing.name,
+          guestName: `${guest.firstName} ${guest.lastName}`,
+          checkIn,
+          checkOut,
+          guests,
+        },
+      })
+      // Real mode: hand off to Paystack's hosted checkout page.
+      if (result.redirect) {
+        window.location.href = result.authorizationUrl
+        return
+      }
+      // Mock mode: Paystack "returned" success.
+      setConfirmation({ ...result, ref })
+    } catch (err) {
+      setError(err.message || 'Payment could not be started. Please try again.')
+    } finally {
+      setProcessing(false)
+    }
   }
 
   if (confirmation) {
@@ -138,26 +163,43 @@ export default function Booking() {
               <div>
                 <h2 className="font-serif text-2xl font-semibold text-ink">Payment</h2>
                 <span className="gold-rule mt-3 block !w-14" />
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-champagne/30 px-4 py-3 text-sm text-ink/70">
-                  <Lock className="h-4 w-4 text-gold" /> This is a mock payment screen — no real charge is made.
+
+                <div className="mt-6 rounded-xl border border-ink/10 bg-offwhite p-6 text-center">
+                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-plum text-gold">
+                    <ShieldCheck className="h-7 w-7" />
+                  </span>
+                  <h3 className="mt-4 font-serif text-xl font-semibold text-ink">
+                    Secure payment with Paystack
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-sm text-sm text-ink/60">
+                    You’ll be redirected to Paystack to complete your payment securely — by card,
+                    bank transfer or USSD. We never see or store your card details.
+                  </p>
+                  <p className="mt-4 inline-flex items-center gap-2 text-xs text-ink/50">
+                    <Lock className="h-4 w-4 text-gold" /> Encrypted &amp; PCI-DSS compliant
+                  </p>
                 </div>
-                <div className="mt-6 space-y-4">
-                  <Field label="Card number" value="4084 0840 8408 4081" onChange={() => {}} icon={CreditCard} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Expiry" value="12 / 28" onChange={() => {}} />
-                    <Field label="CVV" value="123" onChange={() => {}} />
-                  </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-lg bg-champagne/30 px-4 py-3">
+                  <span className="text-sm text-ink/70">Amount due</span>
+                  <span className="font-serif text-lg font-bold text-plum">{formatNaira(totals.total)}</span>
                 </div>
-                <div className="mt-8 flex justify-between">
+
+                {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+
+                <div className="mt-6 flex justify-between">
                   <Button as="button" variant="outline" onClick={() => setStep(1)} disabled={processing}>Back</Button>
                   <Button as="button" onClick={pay} disabled={processing} size="lg">
                     {processing ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>
                     ) : (
-                      <>Pay {formatNaira(totals.total)}</>
+                      <>Pay {formatNaira(totals.total)} <ArrowRight className="h-4 w-4" /></>
                     )}
                   </Button>
                 </div>
+                <p className="mt-3 text-center text-xs text-ink/40">
+                  Mock mode — no real charge is made. On the live site this opens Paystack checkout.
+                </p>
               </div>
             )}
           </div>
@@ -226,12 +268,20 @@ function Confirmation({ listing, guest, checkIn, checkOut, guests, nights, total
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-available/15 text-available">
             <PartyPopper className="h-8 w-8" />
           </span>
-          <h1 className="mt-6 font-serif text-3xl font-bold text-ink">Booking confirmed</h1>
+          <h1 className="mt-6 font-serif text-3xl font-bold text-ink">Payment successful</h1>
           <p className="mt-2 text-ink/60">
-            Thank you, {guest.firstName}. A confirmation has been sent to {guest.email}.
+            Thank you, {guest.firstName}. Your booking is confirmed.
           </p>
           <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-plum px-5 py-2 text-sm font-semibold text-gold">
             Ref: {confirmation.ref}
+          </div>
+
+          <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-xl bg-available/10 px-4 py-3 text-left text-sm text-available">
+            <Mail className="mt-0.5 h-5 w-5 shrink-0" />
+            <span>
+              A confirmation email with your <strong>PDF receipt</strong> and payment details has
+              been sent to <strong>{guest.email}</strong>.
+            </span>
           </div>
 
           {/* Receipt */}
@@ -257,7 +307,9 @@ function Confirmation({ listing, guest, checkIn, checkOut, guests, nights, total
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button to="/listings" variant="dark" size="lg">Browse more stays</Button>
-            <Button as="button" onClick={() => window.print()} variant="outline" size="lg">Print receipt</Button>
+            <Button as="button" onClick={() => window.print()} variant="outline" size="lg">
+              <FileText className="h-4 w-4" /> Download PDF receipt
+            </Button>
           </div>
         </div>
       </div>

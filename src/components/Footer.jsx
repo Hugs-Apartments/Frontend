@@ -1,8 +1,62 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Phone, Mail, Camera, MessageCircle } from 'lucide-react'
+import { MapPin, Phone, Mail, Camera, MessageCircle, Send, Check, Loader2 } from 'lucide-react'
 import Logo from './Logo.jsx'
+import { subscribeNewsletter } from '../data/mockListings.js'
 
 const WHATSAPP = '+234 800 000 0000'
+
+function NewsletterForm() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState('idle') // idle | loading | done | error
+  const [message, setMessage] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setStatus('loading')
+    setMessage('')
+    try {
+      await subscribeNewsletter(email)
+      setStatus('done')
+      setEmail('')
+    } catch (err) {
+      setStatus('error')
+      setMessage(err.message || 'Something went wrong.')
+    }
+  }
+
+  if (status === 'done') {
+    return (
+      <p className="mt-4 flex items-center gap-2 text-sm text-gold">
+        <Check className="h-4 w-4" /> You’re subscribed — welcome to Hugs.
+      </p>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4">
+      <div className="flex overflow-hidden rounded-full border border-white/20 bg-white/5 focus-within:border-gold">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Your email"
+          className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none"
+          aria-label="Email address"
+        />
+        <button
+          type="submit"
+          disabled={status === 'loading'}
+          className="flex items-center gap-1.5 bg-gold px-4 py-2.5 text-sm font-semibold text-plum transition-colors hover:bg-champagne disabled:opacity-60"
+        >
+          {status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </button>
+      </div>
+      {status === 'error' && <p className="mt-2 text-xs text-red-300">{message}</p>}
+    </form>
+  )
+}
 
 export default function Footer() {
   return (
@@ -48,7 +102,9 @@ export default function Footer() {
         <div>
           <h4 className="font-serif text-lg text-white">Stay in touch</h4>
           <span className="gold-rule mt-3 !w-10" />
-          <div className="mt-4 flex gap-3">
+          <p className="mt-4 text-sm">Join our newsletter for new apartments and exclusive offers.</p>
+          <NewsletterForm />
+          <div className="mt-5 flex gap-3">
             <a
               href={`https://wa.me/${WHATSAPP.replace(/[^0-9]/g, '')}`}
               target="_blank"
@@ -77,6 +133,7 @@ export default function Footer() {
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
             <Link to="/legal/privacy" className="hover:text-gold">Privacy Policy</Link>
             <Link to="/legal/terms" className="hover:text-gold">Terms of Use</Link>
+            <Link to="/legal/cancellation" className="hover:text-gold">Cancellation Policy</Link>
             <Link to="/legal/cookies" className="hover:text-gold">Cookie Policy</Link>
           </div>
           <p>Live Luxury. Feel at Home.</p>

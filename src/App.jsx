@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import Home from './pages/Home.jsx'
 import Listings from './pages/Listings.jsx'
@@ -8,6 +9,15 @@ import About from './pages/About.jsx'
 import Contact from './pages/Contact.jsx'
 import Legal from './pages/Legal.jsx'
 import { Button } from './components/ui.jsx'
+
+// Reset scroll to the top whenever the route changes.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 function NotFound() {
   return (
@@ -23,6 +33,7 @@ function NotFound() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />

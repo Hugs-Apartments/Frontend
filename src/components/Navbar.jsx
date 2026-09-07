@@ -8,6 +8,7 @@ const LINKS = [
   { to: '/', label: 'Home' },
   { to: '/listings', label: 'Apartments' },
   { to: '/about', label: 'About' },
+  { to: '/contact', label: 'Contact' },
 ]
 
 export default function Navbar() {
@@ -25,10 +26,16 @@ export default function Navbar() {
   // Close mobile menu on route change.
   useEffect(() => setOpen(false), [location.pathname])
 
+  // Only the home page has a full-bleed dark hero behind the navbar, so the
+  // transparent-at-top look is reserved for it. Everywhere else the bar stays
+  // solid plum so it never washes out to white over light page tops.
+  const isHome = location.pathname === '/'
+  const transparent = isHome && !scrolled
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-plum-dark/95 shadow-lg backdrop-blur' : 'bg-transparent'
+        transparent ? 'bg-transparent' : 'bg-plum-dark/95 shadow-lg backdrop-blur'
       }`}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">

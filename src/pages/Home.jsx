@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { ShieldCheck, Sparkles, Zap, MapPin, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ShieldCheck, Sparkles, Zap, MapPin, ArrowRight } from 'lucide-react'
 import Hero from '../components/Hero.jsx'
 import ListingCard from '../components/ListingCard.jsx'
 import AmenityBadge from '../components/AmenityBadge.jsx'
@@ -21,7 +21,7 @@ export default function Home() {
   const why = getWhyHugs()
 
   useEffect(() => {
-    getFeaturedListings(4).then(setFeatured)
+    getFeaturedListings().then(setFeatured)
     getTestimonials().then(setTestimonials)
   }, [])
 
@@ -36,7 +36,7 @@ export default function Home() {
           title="Featured Apartments"
           subtitle="A selection of our most-loved stays, each styled in warm plum and gold."
         />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {featured.map((l) => (
             <ListingCard key={l.id} listing={l} />
           ))}
@@ -72,18 +72,18 @@ export default function Home() {
             title="The Hugs Difference"
             dark
           />
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
             {why.map((item, i) => {
               const Icon = WHY_ICONS[i % WHY_ICONS.length]
               return (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-7 transition-colors hover:border-gold/40"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-colors hover:border-gold/40 sm:p-7"
                 >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-gold/40 text-gold">
-                    <Icon className="h-6 w-6" strokeWidth={1.5} />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/40 text-gold sm:h-12 sm:w-12">
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.5} />
                   </span>
-                  <h3 className="mt-5 font-serif text-xl font-semibold text-white">
+                  <h3 className="mt-4 font-serif text-lg font-semibold text-white sm:mt-5 sm:text-xl">
                     {item.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-white/70">{item.body}</p>
@@ -95,7 +95,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <TestimonialsCarousel testimonials={testimonials} />
+      <Testimonials testimonials={testimonials} />
 
       {/* CTA */}
       <section className="bg-plum-dark py-20">
@@ -118,51 +118,16 @@ export default function Home() {
   )
 }
 
-function TestimonialsCarousel({ testimonials }) {
-  const scroller = useRef(null)
-
-  const scroll = (dir) => {
-    const el = scroller.current
-    if (!el) return
-    el.scrollBy({ left: dir * (el.clientWidth * 0.8), behavior: 'smooth' })
-  }
-
+function Testimonials({ testimonials }) {
   return (
     <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-      <div className="flex flex-col items-center justify-between gap-6 sm:flex-row sm:items-end">
-        <SectionHeading
-          eyebrow="Guest Stories"
-          title="Loved by our guests"
-          align="left"
-        />
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => scroll(-1)}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-plum/20 text-plum transition-colors hover:bg-plum hover:text-white"
-            aria-label="Previous testimonials"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll(1)}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-plum/20 text-plum transition-colors hover:bg-plum hover:text-white"
-            aria-label="Next testimonials"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
-      <div
-        ref={scroller}
-        className="no-scrollbar mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-2"
-      >
+      <SectionHeading
+        eyebrow="Guest Stories"
+        title="Loved by our guests"
+      />
+      <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
         {testimonials.map((t) => (
-          <div key={t.id} className="w-[85%] shrink-0 snap-start sm:w-[45%] lg:w-[31%]">
-            <TestimonialCard testimonial={t} />
-          </div>
+          <TestimonialCard key={t.id} testimonial={t} />
         ))}
       </div>
     </section>

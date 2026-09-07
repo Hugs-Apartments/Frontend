@@ -49,36 +49,31 @@ export default function ListingDetail() {
           <ArrowLeft className="h-4 w-4" /> All apartments
         </Link>
 
-        {/* Header */}
-        <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-widest text-gold">
-              {listing.type}
-            </span>
-            <h1 className="mt-1 font-serif text-4xl font-bold text-ink">{listing.name}</h1>
-            <div className="mt-3 flex flex-wrap items-center gap-5 text-sm text-ink/60">
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-gold" /> {listing.area}, {listing.location}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4 text-gold" /> Up to {listing.maxGuests} guests
-              </span>
-              <Rating value={listing.rating} count={listing.reviewCount} />
-            </div>
-          </div>
-          <span
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ${
-              listing.available ? 'bg-available/15 text-available' : 'bg-ink/10 text-ink/60'
-            }`}
-          >
-            {listing.available ? 'Available now' : 'Currently booked'}
+        {/* Header — the apartment type sits here as an eyebrow; availability is
+            judged per-date inside the booking panel, not shown as a global badge. */}
+        <div className="mt-6">
+          <span className="text-xs font-semibold uppercase tracking-widest text-gold">
+            {listing.type}
           </span>
+          <h1 className="mt-1 font-serif text-4xl font-bold text-ink">{listing.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-5 text-sm text-ink/60">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-gold" /> {listing.area}, {listing.location}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-gold" /> Up to {listing.maxGuests} guests
+            </span>
+            <Rating value={listing.rating} count={listing.reviewCount} />
+          </div>
         </div>
 
-        {/* Gallery (left) + sticky booking panel (right) */}
-        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[1.6fr_1fr]">
-          {/* Left column: main image, thumbnails, then details */}
-          <div>
+        {/* Gallery + booking panel + details.
+            md and up: gallery/details stack on the left with the booking panel
+            sitting BESIDE the image on the right (spanning full height, sticky).
+            Below md (phones): everything stacks, booking directly under the image. */}
+        <div className="mt-8 flex flex-col gap-8 md:grid md:grid-cols-[1.5fr_1fr] md:items-start">
+          {/* Gallery */}
+          <div className="order-1 md:col-start-1 md:row-start-1">
             <div className="relative aspect-[16/10] overflow-hidden rounded-2xl">
               <img
                 src={images[active]}
@@ -118,9 +113,23 @@ export default function ListingDetail() {
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* Details */}
-            <h2 className="mt-12 font-serif text-2xl font-semibold text-ink">About this apartment</h2>
+          {/* Booking panel — beside the image (md+), directly under it on phones */}
+          <div className="order-2 md:col-start-2 md:row-start-1 md:row-span-3 md:sticky md:top-24 md:self-start">
+            <BookingPanel listing={listing} />
+            <ul className="mt-5 space-y-2 text-sm text-ink/60">
+              {['Free cancellation up to 48h', 'Instant confirmation', 'Verified & secure'].map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-available" /> {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Details */}
+          <div className="order-3 md:col-start-1 md:row-start-2">
+            <h2 className="font-serif text-2xl font-semibold text-ink">About this apartment</h2>
             <span className="gold-rule mt-3 block !w-16" />
             <p className="mt-5 leading-relaxed text-ink/75">{listing.description}</p>
 
@@ -131,9 +140,11 @@ export default function ListingDetail() {
                 <AmenityChip key={a} name={a} />
               ))}
             </div>
+          </div>
 
-            {/* Location blurb + map placeholder */}
-            <h3 className="mt-10 font-serif text-2xl font-semibold text-ink">Where you’ll be</h3>
+          {/* Location blurb + map placeholder — always last */}
+          <div className="order-4 md:col-start-1 md:row-start-3">
+            <h3 className="font-serif text-2xl font-semibold text-ink">Where you’ll be</h3>
             <span className="gold-rule mt-3 block !w-16" />
             <p className="mt-5 text-ink/75">
               Located in {listing.area}, {listing.location} — close to dining, business hubs and
@@ -144,18 +155,6 @@ export default function ListingDetail() {
                 <MapPin className="h-5 w-5 text-gold" /> Map placeholder
               </span>
             </div>
-          </div>
-
-          {/* Right column: sticky booking panel beside the main image */}
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <BookingPanel listing={listing} />
-            <ul className="mt-5 space-y-2 text-sm text-ink/60">
-              {['Free cancellation up to 48h', 'Instant confirmation', 'Verified & secure'].map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-available" /> {f}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </div>

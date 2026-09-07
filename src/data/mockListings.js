@@ -1,7 +1,7 @@
 // Mock dataset for Hugs Luxury Apartments.
 // NOTE: images are placeholder URLs — swap for real property photography later.
-// All data-driven UI reads through src/services/listings.js so this can be
-// replaced with a real API with minimal changes.
+// All data-driven UI reads through the service functions at the bottom of this
+// file so this can be replaced with a real API with minimal changes.
 
 const img = (seed, w = 1200, h = 800) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`
@@ -14,6 +14,11 @@ export const CORE_AMENITIES = [
   'Clean Water Supply',
 ]
 
+// Each apartment carries its own `bookedRanges` — the date windows that are
+// already taken. A stay is bookable for any dates that DON'T overlap one of
+// these ranges (check-out is exclusive, so a new guest can arrive the same day
+// the previous one leaves). There is no global "available/booked" flag: an
+// apartment is only unavailable relative to the specific nights requested.
 export const LISTINGS = [
   {
     id: 'hugs-001',
@@ -29,8 +34,7 @@ export const LISTINGS = [
     images: [img('hugs1a'), img('hugs1b'), img('hugs1c'), img('hugs1d')],
     description:
       'A warm, light-filled studio designed for couples and solo travellers. Champagne curtains, a plush leather headboard and soft ambient lighting make it feel like home from the moment you step in.',
-    available: true,
-    availableDates: [{ from: '2026-09-10', to: '2026-10-30' }],
+    bookedRanges: [{ from: '2026-09-14', to: '2026-09-18' }],
   },
   {
     id: 'hugs-002',
@@ -46,8 +50,7 @@ export const LISTINGS = [
     images: [img('hugs2a'), img('hugs2b'), img('hugs2c'), img('hugs2d')],
     description:
       'An elegant one-bedroom retreat with an olive-green velvet sofa, a full kitchen and a dedicated workspace. Ideal for business travellers who refuse to compromise on comfort.',
-    available: true,
-    availableDates: [{ from: '2026-09-08', to: '2026-11-15' }],
+    bookedRanges: [],
   },
   {
     id: 'hugs-003',
@@ -63,8 +66,10 @@ export const LISTINGS = [
     images: [img('hugs3a'), img('hugs3b'), img('hugs3c'), img('hugs3d')],
     description:
       'Spacious two-bedroom apartment with warm-toned interiors, a private balcony and a full kitchen. Perfect for families or small groups seeking space and serenity.',
-    available: true,
-    availableDates: [{ from: '2026-09-12', to: '2026-12-01' }],
+    bookedRanges: [
+      { from: '2026-09-20', to: '2026-09-25' },
+      { from: '2026-10-05', to: '2026-10-09' },
+    ],
   },
   {
     id: 'hugs-004',
@@ -89,8 +94,7 @@ export const LISTINGS = [
     images: [img('hugs4a'), img('hugs4b'), img('hugs4c'), img('hugs4d')],
     description:
       'Our signature penthouse — floor-to-ceiling views over Maryland, a sweeping living space and concierge service on call. The definitive statement in Lagos short-let luxury.',
-    available: true,
-    availableDates: [{ from: '2026-09-20', to: '2026-12-20' }],
+    bookedRanges: [{ from: '2026-09-08', to: '2026-09-13' }],
   },
   {
     id: 'hugs-005',
@@ -106,8 +110,10 @@ export const LISTINGS = [
     images: [img('hugs5a'), img('hugs5b'), img('hugs5c'), img('hugs5d')],
     description:
       'Cosy and refined, with a soft-glow palette and thoughtful finishes throughout. A quiet base for a restful stay in the heart of Maryland.',
-    available: false,
-    availableDates: [{ from: '2026-11-01', to: '2026-12-15' }],
+    bookedRanges: [
+      { from: '2026-09-05', to: '2026-09-30' },
+      { from: '2026-10-10', to: '2026-10-14' },
+    ],
   },
   {
     id: 'hugs-006',
@@ -123,8 +129,7 @@ export const LISTINGS = [
     images: [img('hugs6a'), img('hugs6b'), img('hugs6c'), img('hugs6d')],
     description:
       'A bright, contemporary one-bedroom with a generous living area and warm interior styling. Close to the best of Maryland dining and nightlife.',
-    available: true,
-    availableDates: [{ from: '2026-09-05', to: '2026-10-25' }],
+    bookedRanges: [],
   },
   {
     id: 'hugs-007',
@@ -140,8 +145,7 @@ export const LISTINGS = [
     images: [img('hugs7a'), img('hugs7b'), img('hugs7c'), img('hugs7d')],
     description:
       'Understated luxury across two bedrooms, styled in champagne and deep plum tones. A calm sanctuary for families and longer stays.',
-    available: true,
-    availableDates: [{ from: '2026-09-14', to: '2026-11-30' }],
+    bookedRanges: [{ from: '2026-10-01', to: '2026-10-06' }],
   },
   {
     id: 'hugs-008',
@@ -165,8 +169,7 @@ export const LISTINGS = [
     images: [img('hugs8a'), img('hugs8b'), img('hugs8c'), img('hugs8d')],
     description:
       'Expansive penthouse living with panoramic views and premium finishes throughout. Designed for those who want to arrive and simply exhale.',
-    available: true,
-    availableDates: [{ from: '2026-09-18', to: '2026-12-10' }],
+    bookedRanges: [{ from: '2026-09-22', to: '2026-09-28' }],
   },
 ]
 
@@ -222,8 +225,9 @@ export const WHY_HUGS = [
 
 // ---------------------------------------------------------------------------
 // Data-service layer. Currently returns mock data with simulated latency, but
-// all UI reads through these functions so swapping in a real API (Supabase)
-// later means only editing this file + src/lib/supabaseClient.js.
+// all UI reads through these functions so swapping in a real API later means
+// editing only this file (point fetch at VITE_API_URL). No Supabase keys ever
+// live in the frontend — all database access happens on the backend.
 // ---------------------------------------------------------------------------
 
 const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms))
@@ -238,9 +242,48 @@ export async function getListingById(id) {
   return LISTINGS.find((l) => l.id === id) ?? null
 }
 
-export async function getFeaturedListings(count = 4) {
+// Featured scales with the catalogue: roughly one third of all listings,
+// rounded up, with a sensible floor so the section never looks sparse.
+export async function getFeaturedListings(count) {
   await delay()
-  return LISTINGS.filter((l) => l.available).slice(0, count)
+  const n = count ?? Math.max(8, Math.ceil(LISTINGS.length / 3))
+  return LISTINGS.slice(0, n)
+}
+
+// Distinct, searchable locations derived from the catalogue (neighbourhoods
+// within the city). In a real deployment these come from the database.
+export function getLocations() {
+  const set = new Set(LISTINGS.map((l) => l.area))
+  return [...set].sort()
+}
+
+// Newsletter subscribe — mock. Wire to the backend /api/subscribe later.
+export async function subscribeNewsletter(email) {
+  await delay(500)
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Error('Please enter a valid email address.')
+  }
+  return { ok: true, email }
+}
+
+// True when [checkIn, checkOut) does NOT overlap any of the apartment's booked
+// ranges. Check-out is exclusive, so two stays may touch at the boundary (one
+// guest checks out the morning another checks in). With no dates chosen we
+// can't judge, so the apartment is treated as bookable.
+export function isAvailableForRange(listing, checkIn, checkOut) {
+  if (!checkIn || !checkOut) return true
+  return !(listing.bookedRanges ?? []).some(
+    (r) => checkIn < r.to && checkOut > r.from,
+  )
+}
+
+// The booked ranges that clash with the requested stay — used to tell the
+// guest exactly which dates are taken.
+export function conflictingRanges(listing, checkIn, checkOut) {
+  if (!checkIn || !checkOut) return []
+  return (listing.bookedRanges ?? []).filter(
+    (r) => checkIn < r.to && checkOut > r.from,
+  )
 }
 
 export async function getTestimonials() {
