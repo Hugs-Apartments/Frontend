@@ -21,12 +21,33 @@ export default function Booking() {
   const checkIn = searchParams.get('checkIn') || ''
   const checkOut = searchParams.get('checkOut') || ''
   const guests = Number(searchParams.get('guests')) || 1
+  const promoFromUrl = searchParams.get('promo') || ''
 
+  // Guest details persist across a refresh so a half-filled form isn't lost.
+  // Scoped per listing id via sessionStorage; cleared once payment starts.
+  const storageKey = `hugs.booking.${id}`
   const [step, setStep] = useState(0)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
   const [confirmation, setConfirmation] = useState(null)
-  const [guest, setGuest] = useState({ firstName: '', lastName: '', email: '', phone: '', notes: '' })
+  const [guest, setGuest] = useState(() => {
+    const empty = { firstName: '', lastName: '', email: '', phone: '', notes: '' }
+    try {
+      const saved = sessionStorage.getItem(`hugs.booking.${id}`)
+      return saved ? { ...empty, ...JSON.parse(saved) } : empty
+    } catch {
+      return empty
+    }
+  })
+
+  // Persist guest details on every change so a refresh keeps them.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(guest))
+    } catch {
+      // storage may be unavailable (private mode) — degrade silently.
+    }
+  }, [guest, storageKey])
 
   // Promo code state. `applied` holds the validated discount once accepted.
   const [promoInput, setPromoInput] = useState('')
@@ -70,6 +91,26 @@ export default function Booking() {
     setPromoError('')
   }
 
+  // A code applied on the listing page arrives as ?promo=CODE. Validate it once
+  // the listing (and so the subtotal) is known, so the discount carries through
+  // to checkout without the guest re-typing it.
+  useEffect(() => {
+    if (!promoFromUrl || !listing || promo || nights < 1) return
+    let cancelled = false
+    const subtotal = nights * listing.pricePerNight
+    validateDiscount({ code: promoFromUrl, subtotal, nights }).then((res) => {
+      if (cancelled) return
+      if (res.ok) {
+        setPromo({ code: res.code, discount: res.discount, label: res.label })
+        setPromoInput(res.code)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing, promoFromUrl])
+
   if (listing === undefined) {
     return <div className="mx-auto max-w-5xl px-5 pt-40 pb-24"><div className="h-96 animate-pulse rounded-2xl bg-ink/5" /></div>
   }
@@ -82,8 +123,12 @@ export default function Booking() {
     )
   }
 
-  const detailsValid =
-    guest.firstName && guest.lastName && /^\S+@\S+\.\S+$/.test(guest.email) && guest.phone.length >= 7
+  // Nigerian mobile numbers: 11 local digits (0803…) or +234 / 234 followed by
+  // 10 digits. We strip spaces, dashes and brackets before checking.
+  const phoneDigits = guest.phone.replace(/[\s()-]/g, '')
+  const phoneValid = /^(?:\+?234|0)\d{10}$/.test(phoneDigits)
+  const emailValid = /^\S+@\S+\.\S+$/.test(guest.email)
+  const detailsValid = guest.firstName && guest.lastName && emailValid && phoneValid
 
   const pay = async () => {
     setError('')
@@ -109,7 +154,8 @@ export default function Booking() {
         window.location.href = result.authorizationUrl
         return
       }
-      // Mock mode: Paystack "returned" success.
+      // Mock mode: Paystack "returned" success. Clear the saved draft.
+      try { sessionStorage.removeItem(storageKey) } catch { /* ignore */ }
       setConfirmation({ ...result, ref })
     } catch (err) {
       setError(err.message || 'Payment could not be started. Please try again.')
@@ -175,8 +221,20 @@ export default function Booking() {
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <Field label="First name" value={guest.firstName} onChange={(v) => setGuest({ ...guest, firstName: v })} />
                   <Field label="Last name" value={guest.lastName} onChange={(v) => setGuest({ ...guest, lastName: v })} />
-                  <Field label="Email" type="email" value={guest.email} onChange={(v) => setGuest({ ...guest, email: v })} />
-                  <Field label="Phone" type="tel" value={guest.phone} onChange={(v) => setGuest({ ...guest, phone: v })} />
+                  <Field
+                    label="Email"
+                    type="email"
+                    value={guest.email}
+                    onChange={(v) => setGuest({ ...guest, email: v })}
+                    error={guest.email && !emailValid ? 'Enter a valid email (must include @).' : ''}
+                  />
+                  <Field
+                    label="Phone"
+                    type="tel"
+                    value={guest.phone}
+                    onChange={(v) => setGuest({ ...guest, phone: v })}
+                    error={guest.phone && !phoneValid ? 'Enter a valid Nigerian number, e.g. 08031234567.' : ''}
+                  />
                   <div className="sm:col-span-2">
                     <Field label="Notes (optional)" textarea value={guest.notes} onChange={(v) => setGuest({ ...guest, notes: v })} />
                   </div>
@@ -307,11 +365,11 @@ function Row({ icon: Icon, label, value }) {
   )
 }
 
-function Field({ label, value, onChange, type = 'text', textarea = false, icon: Icon }) {
+function Field({ label, value, onChange, type = 'text', textarea = false, icon: Icon, error = '' }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/50">{label}</span>
-      <div className="flex items-center gap-2 rounded-lg border border-ink/15 bg-white px-3 py-2.5 focus-within:border-gold">
+      <div className={`flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5 focus-within:border-gold ${error ? 'border-red-400' : 'border-ink/15'}`}>
         {Icon && <Icon className="h-4 w-4 text-ink/40" />}
         {textarea ? (
           <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="w-full resize-none bg-transparent text-sm text-ink outline-none" />
@@ -319,6 +377,7 @@ function Field({ label, value, onChange, type = 'text', textarea = false, icon: 
           <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-transparent text-sm text-ink outline-none" />
         )}
       </div>
+      {error && <span className="mt-1 block text-xs text-red-500">{error}</span>}
     </label>
   )
 }

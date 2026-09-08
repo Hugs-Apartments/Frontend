@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Calendar, Users, Search, Minus, Plus, CheckCircle2, CalendarX } from 'lucide-react'
+import { MapPin, Calendar, Users, Search, Minus, Plus, CheckCircle2, CalendarX, Tag, Loader2, X } from 'lucide-react'
 import { Button } from './ui.jsx'
-import { getLocations, isAvailableForRange, conflictingRanges } from '../data/mockListings.js'
+import { getLocations, isAvailableForRange, conflictingRanges, validateDiscount } from '../data/mockListings.js'
 import { todayISO, addDaysISO, nightsBetween, formatNaira, formatDateLong } from '../utils/format.js'
 
 // Guest stepper.
@@ -109,10 +109,18 @@ export function BookingPanel({ listing }) {
   const [checkOut, setCheckOut] = useState(addDaysISO(todayISO(), 2))
   const [guests, setGuests] = useState(2)
 
+  // Promo code applied at the date step, so the guest sees the discounted
+  // total before proceeding. The validated code is carried to checkout.
+  const [promoInput, setPromoInput] = useState('')
+  const [promo, setPromo] = useState(null) // { code, discount, label } | null
+  const [promoError, setPromoError] = useState('')
+  const [checkingPromo, setCheckingPromo] = useState(false)
+
   const nights = nightsBetween(checkIn, checkOut)
   const subtotal = nights * listing.pricePerNight
   const serviceFee = Math.round(subtotal * 0.05)
-  const total = subtotal + serviceFee
+  const discount = promo ? Math.min(promo.discount, subtotal) : 0
+  const total = Math.max(0, subtotal + serviceFee - discount)
 
   // Availability is judged against this apartment's own booked ranges for the
   // exact dates chosen — other dates stay bookable.
@@ -122,12 +130,36 @@ export function BookingPanel({ listing }) {
   const withinGuests = guests <= listing.maxGuests
   const valid = datesChosen && withinGuests && availableForDates
 
+  const applyPromo = async () => {
+    setPromoError('')
+    setCheckingPromo(true)
+    try {
+      const res = await validateDiscount({ code: promoInput, subtotal, nights })
+      if (res.ok) {
+        setPromo({ code: res.code, discount: res.discount, label: res.label })
+        setPromoInput(res.code)
+      } else {
+        setPromo(null)
+        setPromoError(res.error || 'That code isn’t valid.')
+      }
+    } finally {
+      setCheckingPromo(false)
+    }
+  }
+
+  const removePromo = () => {
+    setPromo(null)
+    setPromoInput('')
+    setPromoError('')
+  }
+
   const proceed = () => {
     const params = new URLSearchParams({
       checkIn,
       checkOut,
       guests: String(guests),
     })
+    if (promo?.code) params.set('promo', promo.code)
     navigate(`/booking/${listing.id}?${params.toString()}`)
   }
 
@@ -192,6 +224,36 @@ export function BookingPanel({ listing }) {
         )
       )}
 
+      {/* Discount code — apply here so the total reflects it before checkout */}
+      {datesChosen && availableForDates && (
+        <div className="mt-4">
+          <span className={label}><Tag className="h-3.5 w-3.5 text-gold" /> Discount code</span>
+          {promo ? (
+            <div className="mt-1.5 flex items-center justify-between rounded-lg border border-available/40 bg-available/10 px-3 py-2 text-sm">
+              <span className="font-medium text-available">
+                <span className="font-mono font-semibold">{promo.code}</span> — {promo.label}
+              </span>
+              <button type="button" onClick={removePromo} aria-label="Remove code" className="text-ink/40 hover:text-red-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex gap-2">
+              <input
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                placeholder="e.g. WELCOME10"
+                className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2 font-mono text-sm uppercase text-ink outline-none focus:border-gold"
+              />
+              <Button as="button" variant="outline" size="sm" onClick={applyPromo} disabled={checkingPromo || !promoInput.trim()}>
+                {checkingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+              </Button>
+            </div>
+          )}
+          {promoError && <p className="mt-1.5 text-xs text-red-500">{promoError}</p>}
+        </div>
+      )}
+
       {datesChosen && availableForDates && (
         <dl className="mt-5 space-y-2 border-t border-ink/10 pt-5 text-sm">
           <div className="flex justify-between text-ink/70">
@@ -202,6 +264,12 @@ export function BookingPanel({ listing }) {
             <dt>Service fee</dt>
             <dd>{formatNaira(serviceFee)}</dd>
           </div>
+          {discount > 0 && (
+            <div className="flex justify-between text-available">
+              <dt>Discount ({promo.code})</dt>
+              <dd>−{formatNaira(discount)}</dd>
+            </div>
+          )}
           <div className="flex justify-between pt-2 font-serif text-lg font-bold text-plum">
             <dt>Total</dt>
             <dd>{formatNaira(total)}</dd>
