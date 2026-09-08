@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { Check, ShieldCheck, Lock, CalendarCheck, User, ArrowRight, ArrowLeft, Loader2, PartyPopper, FileText, Mail } from 'lucide-react'
+import { Check, ShieldCheck, Lock, CalendarCheck, User, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '../components/ui.jsx'
-import { getListingById, validateDiscount } from '../data/mockListings.js'
+import { getListingById, validateDiscount, createBooking } from '../data/mockListings.js'
 import { initPayment } from '../lib/paystack.js'
-import {
-  formatNaira,
-  nightsBetween,
-  formatDateLong,
-  makeBookingRef,
-} from '../utils/format.js'
+import { formatNaira, nightsBetween, formatDateLong } from '../utils/format.js'
 
 const STEPS = ['Dates', 'Details', 'Payment']
 
@@ -29,7 +24,6 @@ export default function Booking() {
   const [step, setStep] = useState(0)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
-  const [confirmation, setConfirmation] = useState(null)
   const [guest, setGuest] = useState(() => {
     const empty = { firstName: '', lastName: '', email: '', phone: '', notes: '' }
     try {
@@ -56,7 +50,7 @@ export default function Booking() {
   const [checkingPromo, setCheckingPromo] = useState(false)
 
   useEffect(() => {
-    getListingById(id).then(setListing)
+    getListingById(id).then(setListing).catch(() => setListing(null))
   }, [id])
 
   const nights = nightsBetween(checkIn, checkOut)
@@ -133,39 +127,30 @@ export default function Booking() {
   const pay = async () => {
     setError('')
     setProcessing(true)
-    const ref = makeBookingRef()
     try {
-      const result = await initPayment({
-        amount: totals.total,
-        email: guest.email,
-        bookingRef: ref,
-        metadata: {
-          listingId: listing.id,
-          listingName: listing.name,
-          guestName: `${guest.firstName} ${guest.lastName}`,
-          checkIn,
-          checkOut,
-          guests,
-          promoCode: promo?.code || null,
-        },
+      // Create the pending booking first — the backend re-validates availability
+      // and computes the real total server-side. Then hand off to Paystack's
+      // hosted checkout (or the backend's simulated checkout in dev).
+      const booking = await createBooking({
+        propertyId: listing.id,
+        guestName: `${guest.firstName} ${guest.lastName}`.trim(),
+        guestEmail: guest.email.trim(),
+        guestPhone: guest.phone.trim(),
+        notes: guest.notes,
+        checkIn,
+        checkOut,
+        guests,
+        promoCode: promo?.code || null,
       })
-      // Real mode: hand off to Paystack's hosted checkout page.
-      if (result.redirect) {
-        window.location.href = result.authorizationUrl
-        return
-      }
-      // Mock mode: Paystack "returned" success. Clear the saved draft.
+      const { authorizationUrl } = await initPayment({ bookingId: booking.id })
+      if (!authorizationUrl) throw new Error('Payment could not be started. Please try again.')
+      // Clear the saved draft and redirect to complete payment.
       try { sessionStorage.removeItem(storageKey) } catch { /* ignore */ }
-      setConfirmation({ ...result, ref })
+      window.location.href = authorizationUrl
     } catch (err) {
       setError(err.message || 'Payment could not be started. Please try again.')
-    } finally {
       setProcessing(false)
     }
-  }
-
-  if (confirmation) {
-    return <Confirmation listing={listing} guest={guest} checkIn={checkIn} checkOut={checkOut} guests={guests} nights={nights} totals={totals} confirmation={confirmation} />
   }
 
   return (
@@ -313,7 +298,7 @@ export default function Booking() {
                   </Button>
                 </div>
                 <p className="mt-3 text-center text-xs text-ink/40">
-                  Mock mode — no real charge is made. On the live site this opens Paystack checkout.
+                  You’ll be redirected to Paystack to complete payment securely.
                 </p>
               </div>
             )}
@@ -382,69 +367,3 @@ function Field({ label, value, onChange, type = 'text', textarea = false, icon: 
   )
 }
 
-function Confirmation({ listing, guest, checkIn, checkOut, guests, nights, totals, confirmation }) {
-  return (
-    <div className="bg-offwhite pt-24">
-      <div className="mx-auto max-w-2xl px-5 py-16 sm:px-8">
-        <div className="rounded-2xl border-t-2 border-gold bg-white p-8 text-center shadow-lg sm:p-12">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-available/15 text-available">
-            <PartyPopper className="h-8 w-8" />
-          </span>
-          <h1 className="mt-6 font-serif text-3xl font-bold text-ink">Payment successful</h1>
-          <p className="mt-2 text-ink/60">
-            Thank you, {guest.firstName}. Your booking is confirmed.
-          </p>
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-plum px-5 py-2 text-sm font-semibold text-gold">
-            Ref: {confirmation.ref}
-          </div>
-
-          <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-xl bg-available/10 px-4 py-3 text-left text-sm text-available">
-            <Mail className="mt-0.5 h-5 w-5 shrink-0" />
-            <span>
-              A confirmation email with your <strong>PDF receipt</strong> and payment details has
-              been sent to <strong>{guest.email}</strong>.
-            </span>
-          </div>
-
-          {/* Receipt */}
-          <div className="mt-8 rounded-xl border border-ink/10 bg-offwhite p-6 text-left">
-            <h2 className="font-serif text-lg font-semibold text-ink">Receipt</h2>
-            <span className="gold-rule mt-2 block !w-12" />
-            <dl className="mt-4 space-y-2.5 text-sm">
-              <Line label="Apartment" value={listing.name} />
-              <Line label="Type" value={listing.type} />
-              <Line label="Check-in" value={formatDateLong(checkIn)} />
-              <Line label="Check-out" value={formatDateLong(checkOut)} />
-              <Line label="Guests" value={`${guests}`} />
-              <Line label="Nights" value={`${nights}`} />
-              <div className="my-2 border-t border-ink/10" />
-              <Line label="Subtotal" value={formatNaira(totals.subtotal)} />
-              <Line label="Service fee" value={formatNaira(totals.serviceFee)} />
-              {totals.discount > 0 && <Line label="Discount" value={`−${formatNaira(totals.discount)}`} />}
-              <div className="flex justify-between pt-1 font-serif text-base font-bold text-plum">
-                <dt>Total paid</dt>
-                <dd>{formatNaira(totals.total)}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Button to="/listings" variant="dark" size="lg">Browse more stays</Button>
-            <Button as="button" onClick={() => window.print()} variant="outline" size="lg">
-              <FileText className="h-4 w-4" /> Download PDF receipt
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Line({ label, value }) {
-  return (
-    <div className="flex justify-between text-ink/70">
-      <dt>{label}</dt>
-      <dd className="font-medium text-ink">{value}</dd>
-    </div>
-  )
-}

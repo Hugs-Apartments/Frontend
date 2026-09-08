@@ -12,7 +12,7 @@ export default function ListingDetail() {
   const [active, setActive] = useState(0)
 
   useEffect(() => {
-    getListingById(id).then(setListing)
+    getListingById(id).then(setListing).catch(() => setListing(null))
   }, [id])
 
   if (listing === undefined) {

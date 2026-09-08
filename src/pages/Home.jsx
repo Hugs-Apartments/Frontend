@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ShieldCheck, Sparkles, Zap, MapPin, ArrowRight } from 'lucide-react'
 import Hero from '../components/Hero.jsx'
 import ListingCard from '../components/ListingCard.jsx'
@@ -15,13 +16,33 @@ import {
 const WHY_ICONS = [ShieldCheck, Sparkles, Zap, MapPin]
 
 export default function Home() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [featured, setFeatured] = useState([])
+  const [featuredLoading, setFeaturedLoading] = useState(true)
+  const [featuredError, setFeaturedError] = useState(false)
   const [testimonials, setTestimonials] = useState([])
   const amenities = getCoreAmenities()
   const why = getWhyHugs()
 
+  // A guest returning from the (simulated) Paystack checkout can land on the
+  // site root with ?reference=… — forward them to the callback page to verify.
   useEffect(() => {
-    getFeaturedListings().then(setFeatured)
+    if (params.get('reference')) {
+      navigate(`/payment/callback?${params.toString()}`, { replace: true })
+    }
+  }, [params, navigate])
+
+  useEffect(() => {
+    getFeaturedListings()
+      .then((data) => {
+        setFeatured(data)
+        setFeaturedLoading(false)
+      })
+      .catch(() => {
+        setFeaturedError(true)
+        setFeaturedLoading(false)
+      })
     getTestimonials().then(setTestimonials)
   }, [])
 
@@ -36,11 +57,27 @@ export default function Home() {
           title="Featured Apartments"
           subtitle="A selection of our most-loved stays, each styled in warm plum and gold."
         />
-        <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {featured.map((l) => (
-            <ListingCard key={l.id} listing={l} />
-          ))}
-        </div>
+        {featuredLoading ? (
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-56 animate-pulse rounded-xl bg-ink/5" />
+            ))}
+          </div>
+        ) : featuredError ? (
+          <p className="mt-12 text-center text-ink/50">
+            We couldn’t load apartments just now. Please refresh to try again.
+          </p>
+        ) : featured.length === 0 ? (
+          <p className="mt-12 text-center text-ink/50">
+            New apartments are on their way — check back soon.
+          </p>
+        ) : (
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {featured.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        )}
         <div className="mt-10 flex justify-center">
           <Button to="/listings" variant="dark" size="lg">
             View all apartments <ArrowRight className="h-4 w-4" />
@@ -94,8 +131,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <Testimonials testimonials={testimonials} />
+      {/* Testimonials — shown only once real guest reviews exist */}
+      {testimonials.length > 0 && <Testimonials testimonials={testimonials} />}
 
       {/* CTA */}
       <section className="bg-plum-dark py-20">

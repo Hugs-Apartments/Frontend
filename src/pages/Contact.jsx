@@ -48,7 +48,7 @@ export default function Contact() {
           <div>
             <SectionHeading eyebrow="Reach Us" title="Details" align="left" />
             <ul className="mt-8 space-y-6">
-              <ContactItem icon={MapPin} title="Address" lines={['45 Dokun Ogundipe Crescent', 'Maryland, Lagos, Nigeria']} />
+              <ContactItem icon={MapPin} title="Address" lines={['No. 45 Dokun Ogundipe Crescent', 'Maryland, Ikeja, Lagos, Nigeria']} />
               <ContactItem icon={Phone} title="Phone / WhatsApp" lines={[WHATSAPP]} />
               <ContactItem icon={Mail} title="Email" lines={['stay@hugsapartments.ng']} />
               <ContactItem icon={Clock} title="Hours" lines={['Reception 24/7', 'Bookings: 8am – 10pm daily']} />

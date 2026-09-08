@@ -9,6 +9,7 @@ import About from './pages/About.jsx'
 import Contact from './pages/Contact.jsx'
 import Legal from './pages/Legal.jsx'
 import Feedback from './pages/Feedback.jsx'
+import PaymentCallback from './pages/PaymentCallback.jsx'
 import { Button } from './components/ui.jsx'
 
 // Reset scroll to the top whenever the route changes.
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/legal/:slug" element={<Legal />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/payment/callback" element={<PaymentCallback />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

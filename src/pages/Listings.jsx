@@ -9,7 +9,6 @@ import {
   getListings,
   getListingTypes,
   getCoreAmenities,
-  getLocations,
   isAvailableForRange,
 } from '../data/mockListings.js'
 import { formatNaira, formatDateLong } from '../utils/format.js'
@@ -27,12 +26,17 @@ export default function Listings() {
   const [searchParams] = useSearchParams()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [view, setView] = useState('grid')
   const [showFilters, setShowFilters] = useState(false)
 
   const types = getListingTypes()
   const coreAmenities = getCoreAmenities()
-  const locations = getLocations()
+  // Locations are the distinct neighbourhoods across the live catalogue.
+  const locations = useMemo(
+    () => [...new Set(listings.map((l) => l.area).filter(Boolean))].sort(),
+    [listings],
+  )
 
   const [selectedTypes, setSelectedTypes] = useState([])
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX)
@@ -42,10 +46,15 @@ export default function Listings() {
   const [sort, setSort] = useState('featured')
 
   useEffect(() => {
-    getListings().then((data) => {
-      setListings(data)
-      setLoading(false)
-    })
+    getListings()
+      .then((data) => {
+        setListings(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError(true)
+        setLoading(false)
+      })
   }, [])
 
   const guestsFromSearch = Number(searchParams.get('guests')) || null
@@ -223,11 +232,11 @@ export default function Listings() {
           {/* Toolbar */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <p className="text-sm text-ink/60">
-              {loading ? 'Loading…' : `${filtered.length} apartment${filtered.length !== 1 ? 's' : ''}`}
-              {!loading && hasDates && (
+              {error ? 'Unavailable' : loading ? 'Loading…' : `${filtered.length} apartment${filtered.length !== 1 ? 's' : ''}`}
+              {!loading && !error && hasDates && (
                 <span className="text-ink/45"> · {formatDateLong(checkIn)} → {formatDateLong(checkOut)}</span>
               )}
-              {!loading && location && <span className="text-ink/45"> · {location}, Maryland</span>}
+              {!loading && !error && location && <span className="text-ink/45"> · {location}, Maryland</span>}
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -271,7 +280,17 @@ export default function Listings() {
           </div>
 
           {/* Results */}
-          {loading ? (
+          {error ? (
+            <div className="rounded-2xl border border-dashed border-ink/20 bg-white p-16 text-center">
+              <p className="font-serif text-xl text-ink">We couldn’t load apartments</p>
+              <p className="mt-2 text-sm text-ink/60">
+                Something went wrong reaching our booking service. Please try again.
+              </p>
+              <Button as="button" onClick={() => window.location.reload()} variant="dark" size="md" className="mt-6">
+                Retry
+              </Button>
+            </div>
+          ) : loading ? (
             <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="h-52 animate-pulse rounded-xl bg-ink/5" />

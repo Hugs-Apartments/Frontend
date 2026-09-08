@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, Calendar, Users, Search, Minus, Plus, CheckCircle2, CalendarX, Tag, Loader2, X } from 'lucide-react'
 import { Button } from './ui.jsx'
@@ -40,11 +40,15 @@ const input = 'bg-transparent text-sm font-medium text-ink outline-none'
 // Hero search widget — location is a dropdown built from the catalogue.
 export function SearchWidget() {
   const navigate = useNavigate()
-  const locations = getLocations()
+  const [locations, setLocations] = useState([])
   const [location, setLocation] = useState('')
   const [checkIn, setCheckIn] = useState(todayISO())
   const [checkOut, setCheckOut] = useState(addDaysISO(todayISO(), 2))
   const [guests, setGuests] = useState(2)
+
+  useEffect(() => {
+    getLocations().then(setLocations).catch(() => setLocations([]))
+  }, [])
 
   const submit = (e) => {
     e.preventDefault()
@@ -294,7 +298,7 @@ export function BookingPanel({ listing }) {
           This apartment holds up to {listing.maxGuests} guests.
         </p>
       )}
-      <p className="mt-3 text-center text-xs text-ink/40">You won’t be charged yet — mock checkout.</p>
+      <p className="mt-3 text-center text-xs text-ink/40">You won’t be charged yet — you’ll confirm and pay on the next step.</p>
     </div>
   )
 }
