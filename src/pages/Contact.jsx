@@ -3,7 +3,7 @@ import { MapPin, Phone, Mail, MessageCircle, Clock, Check } from 'lucide-react'
 import { SectionHeading, Button } from '../components/ui.jsx'
 import { submitContact } from '../data/mockListings.js'
 
-const WHATSAPP = '+234 800 000 0000'
+const WHATSAPP = '+234 909 215 7050'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
@@ -48,7 +48,7 @@ export default function Contact() {
           <div>
             <SectionHeading eyebrow="Reach Us" title="Details" align="left" />
             <ul className="mt-8 space-y-6">
-              <ContactItem icon={MapPin} title="Address" lines={['Maryland, Lagos, Nigeria']} />
+              <ContactItem icon={MapPin} title="Address" lines={['45 Dokun Ogundipe Crescent', 'Maryland, Lagos, Nigeria']} />
               <ContactItem icon={Phone} title="Phone / WhatsApp" lines={[WHATSAPP]} />
               <ContactItem icon={Mail} title="Email" lines={['stay@hugsapartments.ng']} />
               <ContactItem icon={Clock} title="Hours" lines={['Reception 24/7', 'Bookings: 8am – 10pm daily']} />

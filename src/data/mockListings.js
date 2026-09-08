@@ -236,22 +236,123 @@ const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms))
 // otherwise it returns mock data. No Supabase keys ever live in the frontend.
 const API_URL = import.meta.env.VITE_API_URL || ''
 
+// The backend speaks snake_case; the UI is written in camelCase. This maps a
+// property row from the API into the shape the components expect. Booked ranges
+// come from the backend's occupancy endpoint keyed as { from, to }.
+function mapProperty(p) {
+  if (!p) return null
+  return {
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    location: p.location,
+    area: p.area,
+    pricePerNight: Number(p.price_per_night ?? p.pricePerNight ?? 0),
+    rating: Number(p.rating ?? 0),
+    reviewCount: Number(p.review_count ?? p.reviewCount ?? 0),
+    maxGuests: Number(p.max_guests ?? p.maxGuests ?? 1),
+    amenities: p.amenities ?? [],
+    images: p.images ?? [],
+    description: p.description ?? '',
+    bookedRanges: (p.booked_ranges ?? p.bookedRanges ?? []).map((r) => ({
+      from: r.from ?? r.check_in,
+      to: r.to ?? r.check_out,
+    })),
+  }
+}
+
+async function apiGet(path) {
+  const res = await fetch(`${API_URL}${path}`)
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Request failed.')
+  return data
+}
+
 export async function getListings() {
+  if (API_URL) {
+    const data = await apiGet('/api/properties')
+    return (data.properties ?? []).map(mapProperty)
+  }
   await delay()
   return LISTINGS
 }
 
 export async function getListingById(id) {
+  if (API_URL) {
+    const data = await apiGet(`/api/properties/${id}`)
+    return mapProperty(data.property ?? data)
+  }
   await delay()
   return LISTINGS.find((l) => l.id === id) ?? null
 }
 
-// Featured scales with the catalogue: roughly one third of all listings,
-// rounded up, with a sensible floor so the section never looks sparse.
+// Featured = the newest listings first. The backend returns properties ordered
+// by creation; in mock mode we reverse so the most recently added seed shows up
+// at the front. Falls back to a sensible count so the grid never looks sparse.
 export async function getFeaturedListings(count) {
+  if (API_URL) {
+    const all = await getListings()
+    const n = count ?? Math.max(8, Math.ceil(all.length / 3))
+    return all.slice(0, n)
+  }
   await delay()
   const n = count ?? Math.max(8, Math.ceil(LISTINGS.length / 3))
-  return LISTINGS.slice(0, n)
+  return [...LISTINGS].reverse().slice(0, n)
+}
+
+// Validate a promo code against the backend before payment. Returns
+// { ok, discount, label, code } — never throws on an invalid code, so callers
+// can show a gentle inline message. In mock mode a small built-in table is used.
+export async function validateDiscount({ code, subtotal, nights }) {
+  const clean = (code || '').trim().toUpperCase()
+  if (!clean) return { ok: false, error: 'Enter a code.' }
+
+  if (API_URL) {
+    try {
+      const res = await fetch(`${API_URL}/api/discounts/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: clean, subtotal, nights }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) return { ok: false, error: data.error || 'That code isn’t valid.' }
+      return { ok: true, code: clean, discount: Number(data.discount) || 0, label: data.label }
+    } catch {
+      return { ok: false, error: 'Could not check that code. Please try again.' }
+    }
+  }
+
+  // Mock validation mirrors the admin seed codes.
+  await delay(300)
+  const MOCK = {
+    WELCOME10: { type: 'percent', value: 10, min_nights: 0 },
+    STAY3PLUS: { type: 'percent', value: 15, min_nights: 3 },
+  }
+  const row = MOCK[clean]
+  if (!row) return { ok: false, error: 'That code isn’t valid.' }
+  if (nights < (row.min_nights || 0)) return { ok: false, error: `Requires at least ${row.min_nights} nights.` }
+  const discount = row.type === 'percent'
+    ? Math.round((subtotal * row.value) / 100)
+    : Math.min(row.value, subtotal)
+  const label = row.type === 'percent' ? `${row.value}% off` : `₦${row.value.toLocaleString()} off`
+  return { ok: true, code: clean, discount, label }
+}
+
+// Submit guest feedback after checkout. Posts to the backend when configured;
+// mocks a success otherwise so the form works standalone.
+export async function submitFeedback({ reference, name, email, rating, comment }) {
+  if (API_URL) {
+    const res = await fetch(`${API_URL}/api/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference, guest_name: name, guest_email: email, rating, comment }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not submit your feedback.')
+    return { ok: true }
+  }
+  await delay(500)
+  return { ok: true }
 }
 
 // Distinct, searchable locations derived from the catalogue (neighbourhoods

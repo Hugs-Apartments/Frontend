@@ -4,7 +4,7 @@ import AmenityBadge from '../components/AmenityBadge.jsx'
 import { SectionHeading, Button } from '../components/ui.jsx'
 import { getCoreAmenities, getWhyHugs } from '../data/mockListings.js'
 
-const WHATSAPP = '+234 800 000 0000'
+const WHATSAPP = '+234 909 215 7050'
 
 export default function About() {
   const amenities = getCoreAmenities()

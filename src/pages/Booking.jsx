@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { Check, ShieldCheck, Lock, CalendarCheck, User, ArrowRight, ArrowLeft, Loader2, PartyPopper, FileText, Mail } from 'lucide-react'
 import { Button } from '../components/ui.jsx'
-import { getListingById } from '../data/mockListings.js'
+import { getListingById, validateDiscount } from '../data/mockListings.js'
 import { initPayment } from '../lib/paystack.js'
 import {
   formatNaira,
@@ -28,6 +28,12 @@ export default function Booking() {
   const [confirmation, setConfirmation] = useState(null)
   const [guest, setGuest] = useState({ firstName: '', lastName: '', email: '', phone: '', notes: '' })
 
+  // Promo code state. `applied` holds the validated discount once accepted.
+  const [promoInput, setPromoInput] = useState('')
+  const [promo, setPromo] = useState(null) // { code, discount, label } | null
+  const [promoError, setPromoError] = useState('')
+  const [checkingPromo, setCheckingPromo] = useState(false)
+
   useEffect(() => {
     getListingById(id).then(setListing)
   }, [id])
@@ -37,8 +43,32 @@ export default function Booking() {
     if (!listing) return null
     const subtotal = nights * listing.pricePerNight
     const serviceFee = Math.round(subtotal * 0.05)
-    return { subtotal, serviceFee, total: subtotal + serviceFee }
-  }, [listing, nights])
+    const discount = promo ? Math.min(promo.discount, subtotal) : 0
+    return { subtotal, serviceFee, discount, total: Math.max(0, subtotal + serviceFee - discount) }
+  }, [listing, nights, promo])
+
+  const applyPromo = async () => {
+    setPromoError('')
+    setCheckingPromo(true)
+    try {
+      const res = await validateDiscount({ code: promoInput, subtotal: totals.subtotal, nights })
+      if (res.ok) {
+        setPromo({ code: res.code, discount: res.discount, label: res.label })
+        setPromoInput(res.code)
+      } else {
+        setPromo(null)
+        setPromoError(res.error || 'That code isn’t valid.')
+      }
+    } finally {
+      setCheckingPromo(false)
+    }
+  }
+
+  const removePromo = () => {
+    setPromo(null)
+    setPromoInput('')
+    setPromoError('')
+  }
 
   if (listing === undefined) {
     return <div className="mx-auto max-w-5xl px-5 pt-40 pb-24"><div className="h-96 animate-pulse rounded-2xl bg-ink/5" /></div>
@@ -71,6 +101,7 @@ export default function Booking() {
           checkIn,
           checkOut,
           guests,
+          promoCode: promo?.code || null,
         },
       })
       // Real mode: hand off to Paystack's hosted checkout page.
@@ -180,6 +211,32 @@ export default function Booking() {
                   </p>
                 </div>
 
+                {/* Promo code */}
+                <div className="mt-4">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/50">Discount code</span>
+                  {promo ? (
+                    <div className="flex items-center justify-between rounded-lg border border-available/40 bg-available/10 px-4 py-2.5 text-sm">
+                      <span className="font-medium text-available">
+                        <span className="font-mono font-semibold">{promo.code}</span> applied — {promo.label}
+                      </span>
+                      <button type="button" onClick={removePromo} className="text-xs font-semibold text-ink/50 hover:text-red-600">Remove</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        value={promoInput}
+                        onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                        placeholder="e.g. WELCOME10"
+                        className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2.5 font-mono text-sm uppercase text-ink outline-none focus:border-gold"
+                      />
+                      <Button as="button" variant="outline" onClick={applyPromo} disabled={checkingPromo || !promoInput.trim()}>
+                        {checkingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                  )}
+                  {promoError && <p className="mt-2 text-xs text-red-500">{promoError}</p>}
+                </div>
+
                 <div className="mt-4 flex items-center justify-between rounded-lg bg-champagne/30 px-4 py-3">
                   <span className="text-sm text-ink/70">Amount due</span>
                   <span className="font-serif text-lg font-bold text-plum">{formatNaira(totals.total)}</span>
@@ -221,6 +278,12 @@ export default function Booking() {
                     <dt>Service fee</dt>
                     <dd>{formatNaira(totals.serviceFee)}</dd>
                   </div>
+                  {totals.discount > 0 && (
+                    <div className="flex justify-between text-available">
+                      <dt>Discount {promo?.code ? `(${promo.code})` : ''}</dt>
+                      <dd>−{formatNaira(totals.discount)}</dd>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-ink/10 pt-2 font-serif text-lg font-bold text-plum">
                     <dt>Total</dt>
                     <dd>{formatNaira(totals.total)}</dd>
@@ -298,6 +361,7 @@ function Confirmation({ listing, guest, checkIn, checkOut, guests, nights, total
               <div className="my-2 border-t border-ink/10" />
               <Line label="Subtotal" value={formatNaira(totals.subtotal)} />
               <Line label="Service fee" value={formatNaira(totals.serviceFee)} />
+              {totals.discount > 0 && <Line label="Discount" value={`−${formatNaira(totals.discount)}`} />}
               <div className="flex justify-between pt-1 font-serif text-base font-bold text-plum">
                 <dt>Total paid</dt>
                 <dd>{formatNaira(totals.total)}</dd>

@@ -1,7 +1,7 @@
 import { useParams, Navigate, Link } from 'react-router-dom'
 import { SectionHeading } from '../components/ui.jsx'
 
-const WHATSAPP = '+234 800 000 0000'
+const WHATSAPP = '+234 909 215 7050'
 const EMAIL = 'stay@hugsapartments.ng'
 const EFFECTIVE = 'September 2026'
 

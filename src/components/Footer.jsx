@@ -86,7 +86,7 @@ export default function Footer() {
           <ul className="mt-4 space-y-3 text-sm">
             <li className="flex items-start gap-2.5">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-              <span>Maryland, Lagos, Nigeria</span>
+              <span>45 Dokun Ogundipe Crescent, Maryland, Lagos, Nigeria</span>
             </li>
             <li className="flex items-center gap-2.5">
               <Phone className="h-4 w-4 shrink-0 text-gold" />
@@ -115,7 +115,7 @@ export default function Footer() {
               <MessageCircle className="h-5 w-5" />
             </a>
             <a
-              href="https://instagram.com/hugsluxuryapartments"
+              href="https://www.instagram.com/hugsluxuryapartments"
               target="_blank"
               rel="noreferrer"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gold/40 text-gold transition-colors hover:bg-gold hover:text-plum"
