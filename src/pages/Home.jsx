@@ -125,7 +125,7 @@ function Testimonials({ testimonials }) {
         eyebrow="Guest Stories"
         title="Loved by our guests"
       />
-      <div className="mt-12 grid gap-5 sm:gap-6 lg:grid-cols-2">
+      <div className="mt-12 grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {testimonials.map((t) => (
           <TestimonialCard key={t.id} testimonial={t} />
         ))}

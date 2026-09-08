@@ -4,7 +4,7 @@ import { MapPin, Phone, Mail, Camera, MessageCircle, Send, Check, Loader2 } from
 import Logo from './Logo.jsx'
 import { subscribeNewsletter } from '../data/mockListings.js'
 
-const WHATSAPP = '+234 800 000 0000'
+const WHATSAPP = '+234 909 215 7050'
 
 function NewsletterForm() {
   const [email, setEmail] = useState('')

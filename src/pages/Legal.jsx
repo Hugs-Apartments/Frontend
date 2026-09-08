@@ -3,7 +3,7 @@ import { SectionHeading } from '../components/ui.jsx'
 
 const WHATSAPP = '+234 800 000 0000'
 const EMAIL = 'stay@hugsapartments.ng'
-const EFFECTIVE = 'September 2025'
+const EFFECTIVE = 'September 2026'
 
 // All legal copy lives here, keyed by route slug. Content is written for a
 // serviced-apartment short-let business and is intended as a reasonable
