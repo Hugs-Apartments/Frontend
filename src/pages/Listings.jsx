@@ -128,7 +128,7 @@ export default function Listings() {
         >
           <option value="">All locations</option>
           {locations.map((loc) => (
-            <option key={loc} value={loc}>{loc}, Maryland</option>
+            <option key={loc} value={loc}>{loc}</option>
           ))}
         </select>
       </fieldset>
@@ -236,7 +236,7 @@ export default function Listings() {
               {!loading && !error && hasDates && (
                 <span className="text-ink/45"> · {formatDateLong(checkIn)} → {formatDateLong(checkOut)}</span>
               )}
-              {!loading && !error && location && <span className="text-ink/45"> · {location}, Maryland</span>}
+              {!loading && !error && location && <span className="text-ink/45"> · {location}</span>}
             </p>
             <div className="flex items-center gap-3">
               <button

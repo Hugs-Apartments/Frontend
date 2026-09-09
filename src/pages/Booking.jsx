@@ -43,11 +43,10 @@ export default function Booking() {
     }
   }, [guest, storageKey])
 
-  // Promo code state. `applied` holds the validated discount once accepted.
-  const [promoInput, setPromoInput] = useState('')
+  // A discount is applied on the apartment's booking panel and carried here via
+  // ?promo=CODE. We validate it once below and show it in the order summary —
+  // there is no code entry on this checkout flow (that lives only on the panel).
   const [promo, setPromo] = useState(null) // { code, discount, label } | null
-  const [promoError, setPromoError] = useState('')
-  const [checkingPromo, setCheckingPromo] = useState(false)
 
   useEffect(() => {
     getListingById(id).then(setListing).catch(() => setListing(null))
@@ -62,29 +61,6 @@ export default function Booking() {
     return { subtotal, serviceFee, discount, total: Math.max(0, subtotal + serviceFee - discount) }
   }, [listing, nights, promo])
 
-  const applyPromo = async () => {
-    setPromoError('')
-    setCheckingPromo(true)
-    try {
-      const res = await validateDiscount({ code: promoInput, subtotal: totals.subtotal, nights })
-      if (res.ok) {
-        setPromo({ code: res.code, discount: res.discount, label: res.label })
-        setPromoInput(res.code)
-      } else {
-        setPromo(null)
-        setPromoError(res.error || 'That code isn’t valid.')
-      }
-    } finally {
-      setCheckingPromo(false)
-    }
-  }
-
-  const removePromo = () => {
-    setPromo(null)
-    setPromoInput('')
-    setPromoError('')
-  }
-
   // A code applied on the listing page arrives as ?promo=CODE. Validate it once
   // the listing (and so the subtotal) is known, so the discount carries through
   // to checkout without the guest re-typing it.
@@ -96,7 +72,6 @@ export default function Booking() {
       if (cancelled) return
       if (res.ok) {
         setPromo({ code: res.code, discount: res.discount, label: res.label })
-        setPromoInput(res.code)
       }
     })
     return () => {
@@ -252,32 +227,6 @@ export default function Booking() {
                   <p className="mt-4 inline-flex items-center gap-2 text-xs text-ink/50">
                     <Lock className="h-4 w-4 text-gold" /> Encrypted &amp; PCI-DSS compliant
                   </p>
-                </div>
-
-                {/* Promo code */}
-                <div className="mt-4">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink/50">Discount code</span>
-                  {promo ? (
-                    <div className="flex items-center justify-between rounded-lg border border-available/40 bg-available/10 px-4 py-2.5 text-sm">
-                      <span className="font-medium text-available">
-                        <span className="font-mono font-semibold">{promo.code}</span> applied — {promo.label}
-                      </span>
-                      <button type="button" onClick={removePromo} className="text-xs font-semibold text-ink/50 hover:text-red-600">Remove</button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        value={promoInput}
-                        onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                        placeholder="e.g. WELCOME10"
-                        className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-white px-3 py-2.5 font-mono text-sm uppercase text-ink outline-none focus:border-gold"
-                      />
-                      <Button as="button" variant="outline" onClick={applyPromo} disabled={checkingPromo || !promoInput.trim()}>
-                        {checkingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                      </Button>
-                    </div>
-                  )}
-                  {promoError && <p className="mt-2 text-xs text-red-500">{promoError}</p>}
                 </div>
 
                 <div className="mt-4 flex items-center justify-between rounded-lg bg-champagne/30 px-4 py-3">

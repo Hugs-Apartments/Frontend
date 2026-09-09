@@ -71,7 +71,7 @@ export function SearchWidget() {
         >
           <option value="">All locations</option>
           {locations.map((loc) => (
-            <option key={loc} value={loc}>{loc}, Maryland</option>
+            <option key={loc} value={loc}>{loc}</option>
           ))}
         </select>
       </label>

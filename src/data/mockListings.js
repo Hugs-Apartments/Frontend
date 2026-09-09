@@ -51,6 +51,7 @@ function mapProperty(p) {
     type: p.type,
     location: p.location,
     area: p.area,
+    mapUrl: p.map_url ?? p.mapUrl ?? null,
     pricePerNight: Number(p.price_per_night ?? p.pricePerNight ?? 0),
     rating: Number(p.rating ?? 0),
     reviewCount: Number(p.review_count ?? p.reviewCount ?? 0),
@@ -118,11 +119,13 @@ export async function validateDiscount({ code, subtotal, nights }) {
   const clean = (code || '').trim().toUpperCase()
   if (!clean) return { ok: false, error: 'Enter a code.' }
   try {
+    // A 2xx response means the code is valid — the backend replies with the
+    // computed discount. An invalid / expired / used-up code comes back as a
+    // 400 whose message apiSend throws, so we surface that exact reason below.
     const data = await apiSend('/api/discounts/validate', { code: clean, subtotal, nights })
-    if (!data.ok) return { ok: false, error: data.error || 'That code isn’t valid.' }
-    return { ok: true, code: clean, discount: Number(data.discount) || 0, label: data.label }
-  } catch {
-    return { ok: false, error: 'Could not check that code. Please try again.' }
+    return { ok: true, code: data.code || clean, discount: Number(data.discount) || 0, label: data.label }
+  } catch (err) {
+    return { ok: false, error: err.message || 'Could not check that code. Please try again.' }
   }
 }
 

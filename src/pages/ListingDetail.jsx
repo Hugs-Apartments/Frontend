@@ -6,6 +6,38 @@ import { AmenityChip } from '../components/AmenityBadge.jsx'
 import { Rating, Button } from '../components/ui.jsx'
 import { getListingById } from '../data/mockListings.js'
 
+// Turn whatever the admin pasted into an embeddable Google Maps src (no API key
+// needed — Google's `output=embed` endpoint frames fine). Handles: an already-
+// embeddable URL, a place URL with @lat,lng, a bare "lat,lng", a ?q=/query=
+// param, a /maps/place/<name> path, or a plain address/place string. Returns
+// null when it's an http link we can't safely turn into an embed (e.g. a
+// maps.app.goo.gl short link) — the caller then shows an "open in Maps" link.
+function mapEmbedSrc(raw) {
+  if (!raw) return null
+  const url = String(raw).trim()
+  if (!url) return null
+  if (/output=embed/i.test(url) || /\/maps\/embed/i.test(url)) return url
+
+  const q = (v) => `https://www.google.com/maps?q=${encodeURIComponent(v)}&output=embed`
+
+  const at = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+  if (at) return q(`${at[1]},${at[2]}`)
+
+  const bare = url.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/)
+  if (bare) return q(`${bare[1]},${bare[2]}`)
+
+  try {
+    const u = new URL(url)
+    const param = u.searchParams.get('q') || u.searchParams.get('query')
+    if (param) return q(param)
+    const place = u.pathname.match(/\/maps\/place\/([^/]+)/)
+    if (place) return q(decodeURIComponent(place[1]).replace(/\+/g, ' '))
+    return null // a URL (e.g. short link) we can't turn into an embed
+  } catch {
+    return q(url) // not a URL — treat it as an address / place query
+  }
+}
+
 export default function ListingDetail() {
   const { id } = useParams()
   const [listing, setListing] = useState(undefined) // undefined=loading, null=not found
@@ -36,6 +68,7 @@ export default function ListingDetail() {
   }
 
   const images = listing.images
+  const mapSrc = mapEmbedSrc(listing.mapUrl)
   const prev = () => setActive((a) => (a - 1 + images.length) % images.length)
   const next = () => setActive((a) => (a + 1) % images.length)
 
@@ -142,7 +175,8 @@ export default function ListingDetail() {
             </div>
           </div>
 
-          {/* Location blurb + map placeholder — always last */}
+          {/* Location blurb + map — the map only appears when the listing has a
+              map link; otherwise just the text blurb shows (no empty box). */}
           <div className="order-4 md:col-start-1 md:row-start-3">
             <h3 className="font-serif text-2xl font-semibold text-ink">Where you’ll be</h3>
             <span className="gold-rule mt-3 block !w-16" />
@@ -150,11 +184,28 @@ export default function ListingDetail() {
               Located in {listing.area}, {listing.location} — close to dining, business hubs and
               major routes across the city.
             </p>
-            <div className="mt-5 flex aspect-[16/7] items-center justify-center rounded-2xl border border-ink/10 bg-plum/5">
-              <span className="inline-flex items-center gap-2 text-sm text-ink/50">
-                <MapPin className="h-5 w-5 text-gold" /> Map placeholder
-              </span>
-            </div>
+            {mapSrc ? (
+              <div className="mt-5 overflow-hidden rounded-2xl border border-ink/10">
+                <iframe
+                  src={mapSrc}
+                  title={`Map — ${listing.name}`}
+                  className="block aspect-[16/7] w-full"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
+            ) : listing.mapUrl ? (
+              <a
+                href={listing.mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink/20 px-5 py-2.5 text-sm font-semibold text-plum transition-colors hover:border-gold"
+              >
+                <MapPin className="h-4 w-4 text-gold" /> Open location in Google Maps
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
