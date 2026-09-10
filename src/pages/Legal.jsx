@@ -2,7 +2,7 @@ import { useParams, Navigate, Link } from 'react-router-dom'
 import { SectionHeading } from '../components/ui.jsx'
 
 const WHATSAPP = '+234 909 215 7050'
-const EMAIL = 'stay@hugsapartments.ng'
+const EMAIL = 'info@hugsluxuryapartments.com'
 const EFFECTIVE = 'September 2026'
 
 // All legal copy lives here, keyed by route slug. Content is written for a

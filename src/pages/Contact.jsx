@@ -50,7 +50,7 @@ export default function Contact() {
             <ul className="mt-8 space-y-6">
               <ContactItem icon={MapPin} title="Address" lines={['No. 45 Dokun Ogundipe Crescent', 'Maryland, Ikeja, Lagos, Nigeria']} />
               <ContactItem icon={Phone} title="Phone / WhatsApp" lines={[WHATSAPP]} />
-              <ContactItem icon={Mail} title="Email" lines={['stay@hugsapartments.ng']} />
+              <ContactItem icon={Mail} title="Email" lines={['info@hugsluxuryapartments.com', 'bookings@hugsluxuryapartments.com']} />
               <ContactItem icon={Clock} title="Hours" lines={['Reception 24/7', 'Bookings: 8am – 10pm daily']} />
             </ul>
             <Button href={`https://wa.me/${WHATSAPP.replace(/[^0-9]/g, '')}`} size="lg" className="mt-8">
