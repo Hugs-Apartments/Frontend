@@ -90,11 +90,21 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-2.5">
               <Phone className="h-4 w-4 shrink-0 text-gold" />
-              <span>{WHATSAPP}</span>
+              <a
+                href={`tel:${WHATSAPP.replace(/[^0-9+]/g, '')}`}
+                className="transition-colors hover:text-gold hover:underline"
+              >
+                {WHATSAPP}
+              </a>
             </li>
             <li className="flex items-center gap-2.5">
               <Mail className="h-4 w-4 shrink-0 text-gold" />
-              <span>info@hugsluxuryapartments.com</span>
+              <a
+                href="mailto:info@hugsluxuryapartments.com"
+                className="break-all transition-colors hover:text-gold hover:underline"
+              >
+                info@hugsluxuryapartments.com
+              </a>
             </li>
           </ul>
         </div>
